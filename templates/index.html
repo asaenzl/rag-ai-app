@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>VECTOR//SEARCH</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cyan: #00f5ff;
+      --magenta: #ff00aa;
+      --yellow: #f5e642;
+      --green: #00ff88;
+      --dark: #050510;
+      --darker: #020208;
+      --grid: #0a0a2a;
+      --surface: #0a0a1f;
+      --glow-cyan: 0 0 10px #00f5ff88, 0 0 30px #00f5ff33;
+      --glow-magenta: 0 0 10px #ff00aa88, 0 0 30px #ff00aa33;
+      --glow-green: 0 0 10px #00ff8888, 0 0 20px #00ff8833;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--dark);
+      color: var(--cyan);
+      font-family: 'Share Tech Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+      background-size: 40px 40px;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 2px,
+        rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px
+      );
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    /* ── HEADER ── */
+    header { text-align: center; margin-bottom: 36px; }
+
+    .logo {
+      font-family: 'Orbitron', monospace;
+      font-weight: 900;
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      letter-spacing: 8px;
+      color: var(--cyan);
+      text-shadow: var(--glow-cyan);
+      animation: flicker 6s infinite;
+    }
+
+    .logo span { color: var(--magenta); text-shadow: var(--glow-magenta); }
+
+    .subtitle {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      letter-spacing: 4px;
+      color: var(--magenta);
+      text-shadow: var(--glow-magenta);
+      opacity: 0.8;
+    }
+
+    .divider {
+      margin: 20px auto;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--cyan), var(--magenta), transparent);
+      box-shadow: var(--glow-cyan);
+    }
+
+    /* ── NAV TABS ── */
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 28px;
+      border-bottom: 1px solid rgba(0,245,255,0.15);
+    }
+
+    .nav-tab {
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      color: rgba(0,245,255,0.4);
+      font-family: 'Orbitron', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      bottom: -1px;
+    }
+
+    .nav-tab:hover { color: var(--cyan); }
+
+    .nav-tab.active {
+      border-color: rgba(0,245,255,0.3);
+      border-bottom-color: var(--dark);
+      color: var(--cyan);
+      text-shadow: var(--glow-cyan);
+    }
+
+    /* ── PANELS ── */
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .cyber-panel {
+      border: 1px solid var(--cyan);
+      box-shadow: var(--glow-cyan), inset 0 0 30px rgba(0,245,255,0.04);
+      padding: 24px;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .cyber-panel::before {
+      content: attr(data-label);
+      position: absolute;
+      top: -10px; left: 16px;
+      background: var(--dark);
+      padding: 0 8px;
+      font-size: 0.7rem;
+      color: var(--magenta);
+      letter-spacing: 3px;
+    }
+
+    /* ── STATUS BAR ── */
+    .status-bar {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 24px;
+      font-size: 0.7rem;
+      color: rgba(0,245,255,0.5);
+      letter-spacing: 2px;
+      flex-wrap: wrap;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: var(--glow-cyan);
+      animation: pulse 2s infinite;
+      margin-right: 6px;
+    }
+
+    /* ── INPUTS ── */
+    .input-row { display: flex; gap: 12px; align-items: center; }
+
+    .prompt-symbol {
+      color: var(--magenta);
+      font-size: 1.2rem;
+      text-shadow: var(--glow-magenta);
+      white-space: nowrap;
+    }
+
+    .cyber-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1rem;
+      padding: 8px 4px;
+      outline: none;
+      caret-color: var(--magenta);
+    }
+
+    .cyber-input::placeholder { color: rgba(0,245,255,0.3); }
+    .cyber-input:focus { border-bottom-color: var(--magenta); box-shadow: 0 2px 0 var(--magenta); }
+
+    .btn-exec {
+      background: transparent;
+      border: 1px solid var(--magenta);
+      color: var(--magenta);
+      font-family: 'Orbitron', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+      padding: 10px 20px;
+      cursor: pointer;
+      text-shadow: var(--glow-magenta);
+      box-shadow: var(--glow-magenta);
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .btn-exec:hover { background: var(--magenta); color: var(--dark); text-shadow: none; }
+    .btn-exec:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── CHAT ── */
+    #chatMessages {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-height: 420px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      padding-right: 4px;
+    }
+
+    #chatMessages::-webkit-scrollbar { width: 3px; }
+    #chatMessages::-webkit-scrollbar-thumb { background: rgba(0,245,255,0.2); }
+
+    .chat-msg { animation: fadeUp 0.3s ease forwards; }
+
+    .msg-role {
+      font-size: 0.65rem;
+      letter-spacing: 3px;
+      margin-bottom: 6px;
+    }
+
+    .msg-role.user { color: var(--magenta); text-shadow: var(--glow-magenta); }
+    .msg-role.assistant { color: var(--cyan); text-shadow: var(--glow-cyan); }
+
+    .msg-body {
+      border-left: 2px solid;
+      padding: 12px 16px;
+      font-size: 0.88rem;
+      line-height: 1.7;
+      background: rgba(0,245,255,0.02);
+    }
+
+    .msg-body.user { border-color: var(--magenta); color: rgba(255,0,170,0.9); }
+    .msg-body.assistant { border-color: var(--cyan); color: rgba(0,245,255,0.85); }
+
+    .msg-meta {
+      margin-top: 8px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .source-tag {
+      font-size: 0.65rem;
+      letter-spacing: 1px;
+      color: var(--yellow);
+      text-shadow: 0 0 8px var(--yellow);
+      border: 1px solid rgba(245,230,66,0.3);
+      padding: 2px 8px;
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .token-tag { font-size: 0.65rem; color: rgba(0,245,255,0.4); letter-spacing: 1px; }
+
+    .feedback-row {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .fb-btn {
+      background: transparent;
+      border: 1px solid rgba(0,245,255,0.2);
+      color: rgba(0,245,255,0.5);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .fb-btn:hover { border-color: var(--cyan); color: var(--cyan); }
+    .fb-btn.sel-like { border-color: var(--green); color: var(--green); box-shadow: var(--glow-green); }
+    .fb-btn.sel-dislike { border-color: var(--magenta); color: var(--magenta); box-shadow: var(--glow-magenta); }
+
+    .fb-comment {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid rgba(0,245,255,0.2);
+      color: var(--cyan);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      padding: 4px 6px;
+      outline: none;
+      min-width: 120px;
+    }
+
+    .fb-comment:focus { border-bottom-color: var(--cyan); }
+
+    .fb-send {
+      background: transparent;
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-family: 'Orbitron', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 1px;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .fb-send:hover { background: var(--cyan); color: var(--dark); }
+    .fb-sent { font-size: 0.7rem; color: var(--green); text-shadow: var(--glow-green); letter-spacing: 2px; }
+
+    .typing-indicator {
+      display: flex;
+      gap: 6px;
+      padding: 14px 16px;
+      border-left: 2px solid var(--cyan);
+    }
+
+    .typing-indicator span {
+      width: 6px; height: 6px;
+      background: var(--cyan);
+      border-radius: 50%;
+      animation: bounce .8s infinite;
+      box-shadow: var(--glow-cyan);
+    }
+
+    .typing-indicator span:nth-child(2) { animation-delay: .15s; }
+    .typing-indicator span:nth-child(3) { animation-delay: .3s; }
+
+    /* ── VECTOR SEARCH RESULTS ── */
+    #resultados { display: flex; flex-direction: column; gap: 16px; }
+
+    .result-card {
+      border: 1px solid rgba(0,245,255,0.3);
+      padding: 20px;
+      position: relative;
+      animation: slideIn 0.4s ease forwards;
+      opacity: 0;
+      background: rgba(0,245,255,0.02);
+    }
+
+    .result-card:nth-child(1) { animation-delay: 0.05s; border-color: var(--cyan); box-shadow: var(--glow-cyan); }
+    .result-card:nth-child(2) { animation-delay: 0.15s; border-color: rgba(0,245,255,0.5); }
+    .result-card:nth-child(3) { animation-delay: 0.25s; border-color: rgba(0,245,255,0.2); }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      font-size: 0.7rem;
+      letter-spacing: 2px;
+    }
+
+    .result-rank { font-family: 'Orbitron', monospace; color: var(--magenta); text-shadow: var(--glow-magenta); }
+    .result-score { color: var(--yellow); text-shadow: 0 0 8px var(--yellow); }
+    .result-text { font-size: 0.88rem; line-height: 1.7; color: rgba(0,245,255,0.85); }
+
+    .result-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px; height: 100%;
+      background: var(--magenta);
+      box-shadow: var(--glow-magenta);
+    }
+
+    /* ── UPLOAD ── */
+    .upload-zone {
+      border: 2px dashed rgba(0,245,255,0.3);
+      padding: 32px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .upload-zone:hover { border-color: var(--cyan); box-shadow: var(--glow-cyan); }
+    .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+    .upload-icon { font-size: 32px; margin-bottom: 10px; }
+    .upload-zone p { font-size: 0.75rem; letter-spacing: 2px; color: rgba(0,245,255,0.5); line-height: 1.8; }
+    .upload-zone strong { color: var(--cyan); }
+    .upload-status { font-size: 0.75rem; letter-spacing: 2px; min-height: 20px; margin-top: 4px; }
+
+    .doc-list-title { font-size: 0.65rem; letter-spacing: 3px; color: var(--magenta); margin-bottom: 10px; }
+
+    .doc-item {
+      padding: 8px 12px;
+      border-left: 2px solid var(--cyan);
+      margin-bottom: 6px;
+      font-size: 0.75rem;
+      color: rgba(0,245,255,0.7);
+      background: rgba(0,245,255,0.03);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── STATS ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      border: 1px solid rgba(0,245,255,0.2);
+      padding: 16px 12px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: 'Orbitron', monospace;
+      font-size: 1.8rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .stat-label { font-size: 0.6rem; letter-spacing: 2px; color: rgba(0,245,255,0.4); }
+    .stat-card.total .stat-value { color: var(--cyan); text-shadow: var(--glow-cyan); }
+    .stat-card.rate .stat-value { color: var(--yellow); text-shadow: 0 0 8px var(--yellow); }
+    .stat-card.likes .stat-value { color: var(--green); text-shadow: var(--glow-green); }
+    .stat-card.dislikes .stat-value { color: var(--magenta); text-shadow: var(--glow-magenta); }
+
+    .fb-log-title { font-size: 0.65rem; letter-spacing: 3px; color: var(--magenta); margin-bottom: 10px; }
+
+    .fb-log-item {
+      padding: 10px 12px;
+      border-left: 2px solid rgba(0,245,255,0.2);
+      margin-bottom: 6px;
+      font-size: 0.75rem;
+      background: rgba(0,245,255,0.02);
+    }
+
+    .fb-log-item.like { border-left-color: var(--green); }
+    .fb-log-item.dislike { border-left-color: var(--magenta); }
+    .fb-log-q { color: rgba(0,245,255,0.5); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fb-log-c { color: rgba(0,245,255,0.8); font-style: italic; }
+
+    /* ── LOADING / EMPTY ── */
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 30px;
+      color: var(--magenta);
+      font-size: 0.8rem;
+      letter-spacing: 4px;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px; height: 20px;
+      border: 2px solid rgba(255,0,170,0.2);
+      border-top-color: var(--magenta);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 12px;
+      vertical-align: middle;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: rgba(0,245,255,0.25);
+      font-size: 0.8rem;
+      letter-spacing: 3px;
+      line-height: 2;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes flicker {
+      0%,95%,100%{opacity:1}96%{opacity:.7}97%{opacity:1}98%{opacity:.5}99%{opacity:1}
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)} }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    @keyframes slideIn { from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:translateX(0)} }
+    @keyframes bounce { 0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)} }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)} }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">VECTOR<span>//</span>SEARCH</div>
+    <div class="subtitle">FAISS · HNSW · SEMANTIC RETRIEVAL · RAG · GPT-4o</div>
+    <div class="divider"></div>
+  </header>
+
+  <div class="status-bar">
+    <span><span class="status-dot"></span>SYSTEM ONLINE</span>
+    <span id="chunkCount">VECTORS LOADED</span>
+    <span>INDEX: HNSW</span>
+    <span>MODEL: GPT-4O</span>
+  </div>
+
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="switchTab('chat')">RAG CHAT</button>
+    <button class="nav-tab" onclick="switchTab('search')">VECTOR SEARCH</button>
+    <button class="nav-tab" onclick="switchTab('upload')">UPLOAD DOCS</button>
+    <button class="nav-tab" onclick="switchTab('stats')">FEEDBACK STATS</button>
+  </div>
+
+  <!-- RAG CHAT -->
+  <div class="panel active" id="tab-chat">
+    <div class="cyber-panel" data-label="[ RAG CHAT ]">
+      <div id="chatMessages">
+        <div class="empty-state">// AWAITING QUERY<br>// ASK ANYTHING ABOUT YOUR DOCUMENTS</div>
+      </div>
+      <div class="input-row">
+        <span class="prompt-symbol">&gt;_</span>
+        <input class="cyber-input" id="chatInput" type="text" placeholder="enter your question..." autocomplete="off" />
+        <button class="btn-exec" id="chatBtn" onclick="sendQuestion()">EXEC</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- VECTOR SEARCH -->
+  <div class="panel" id="tab-search">
+    <div class="cyber-panel" data-label="[ QUERY INPUT ]">
+      <div class="input-row">
+        <span class="prompt-symbol">&gt;_</span>
+        <input class="cyber-input" id="searchInput" type="text" placeholder="enter semantic query..." autocomplete="off" />
+        <button class="btn-exec" onclick="buscar()">EXEC</button>
+      </div>
+    </div>
+    <div class="loading" id="searchLoading"><span class="spinner"></span>SCANNING VECTOR SPACE...</div>
+    <div id="resultados"><div class="empty-state">// AWAITING QUERY INPUT<br>// TYPE A QUESTION AND PRESS EXEC</div></div>
+  </div>
+
+  <!-- UPLOAD -->
+  <div class="panel" id="tab-upload">
+    <div class="cyber-panel" data-label="[ DOCUMENT INGESTION ]">
+      <div class="upload-zone">
+        <input type="file" id="fileInput" accept=".pdf,.docx,.txt" onchange="uploadFile(this)">
+        <div class="upload-icon">📄</div>
+        <p><strong>DROP FILE OR CLICK TO UPLOAD</strong><br>ACCEPTED: PDF · DOCX · TXT</p>
+      </div>
+      <div class="upload-status" id="uploadStatus"></div>
+    </div>
+    <div class="cyber-panel" data-label="[ INDEXED DOCUMENTS ]">
+      <div class="doc-list-title">// CORPUS CONTENTS</div>
+      <div id="docList"><div class="empty-state" style="padding:16px">// NO DOCUMENTS LOADED</div></div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="panel" id="tab-stats">
+    <div class="cyber-panel" data-label="[ FEEDBACK METRICS ]">
+      <div class="stats-grid">
+        <div class="stat-card total"><div class="stat-value" id="statTotal">—</div><div class="stat-label">TOTAL</div></div>
+        <div class="stat-card rate"><div class="stat-value" id="statRate">—</div><div class="stat-label">% LIKES</div></div>
+        <div class="stat-card likes"><div class="stat-value" id="statLikes">—</div><div class="stat-label">👍 LIKES</div></div>
+        <div class="stat-card dislikes"><div class="stat-value" id="statDislikes">—</div><div class="stat-label">👎 DISLIKES</div></div>
+      </div>
+      <div class="fb-log-title">// FEEDBACK LOG</div>
+      <div id="feedbackLog"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let lastQuestion = "", lastAnswer = "", msgCounter = 0, votes = {};
+
+  function switchTab(tab) {
+    const tabs = ['chat','search','upload','stats'];
+    document.querySelectorAll('.nav-tab').forEach((t,i) => t.classList.toggle('active', tabs[i] === tab));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (tab === 'stats') loadStats();
+    if (tab === 'upload') loadDocs();
+  }
+
+  document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendQuestion(); });
+  document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
+
+  // ── RAG CHAT ──
+  async function sendQuestion() {
+    const input = document.getElementById('chatInput');
+    const q = input.value.trim();
+    if (!q) return;
+    lastQuestion = q;
+    input.value = '';
+    document.getElementById('chatBtn').disabled = true;
+    const welcome = document.querySelector('#chatMessages .empty-state');
+    if (welcome) welcome.remove();
+
+    appendUserMsg(q);
+    const tid = appendTyping();
+
+    try {
+      const res = await fetch('/preguntar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pregunta: q })
+      });
+      const data = await res.json();
+      removeEl(tid);
+      if (data.error) appendAssistantMsg({ respuesta: '⚠️ ' + data.error, fuentes: [], tokens_usados: 0 });
+      else { lastAnswer = data.respuesta; appendAssistantMsg(data); }
+    } catch {
+      removeEl(tid);
+      appendAssistantMsg({ respuesta: '⚠️ CONNECTION ERROR', fuentes: [], tokens_usados: 0 });
+    }
+    document.getElementById('chatBtn').disabled = false;
+  }
+
+  function appendUserMsg(text) {
+    const msgs = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'chat-msg';
+    div.innerHTML = `<div class="msg-role user">&gt; USER_INPUT</div><div class="msg-body user">${esc(text)}</div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function appendAssistantMsg(data) {
+    const msgs = document.getElementById('chatMessages');
+    const id = 'msg-' + (++msgCounter);
+    const div = document.createElement('div');
+    div.className = 'chat-msg';
+
+    const tags = (data.fuentes || []).map(f =>
+      `<span class="source-tag" title="${f}">${f.length > 50 ? f.slice(0,50)+'…' : f}</span>`
+    ).join('');
+
+    div.innerHTML = `
+      <div class="msg-role assistant">// SYSTEM_RESPONSE</div>
+      <div class="msg-body assistant">${esc(data.respuesta)}</div>
+      <div class="msg-meta">
+        ${tags}
+        ${data.tokens_usados ? `<span class="token-tag">TOKENS: ${data.tokens_usados}</span>` : ''}
+      </div>
+      <div class="feedback-row" id="fb-${id}">
+        <button class="fb-btn" onclick="selectVote('${id}','like',this)">👍 LIKE</button>
+        <button class="fb-btn" onclick="selectVote('${id}','dislike',this)">👎 DISLIKE</button>
+        <input class="fb-comment" id="fc-${id}" placeholder="optional comment..." />
+        <button class="fb-send" onclick="sendFeedback('${id}')">SEND</button>
+      </div>
+    `;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function appendTyping() {
+    const msgs = document.getElementById('chatMessages');
+    const id = 'typing-' + Date.now();
+    const div = document.createElement('div');
+    div.id = id;
+    div.className = 'chat-msg';
+    div.innerHTML = `<div class="msg-role assistant">// PROCESSING...</div><div class="typing-indicator"><span></span><span></span><span></span></div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+    return id;
+  }
+
+  function selectVote(id, vote, btn) {
+    votes[id] = vote;
+    document.querySelectorAll(`#fb-${id} .fb-btn`).forEach(b => b.classList.remove('sel-like','sel-dislike'));
+    btn.classList.add(vote === 'like' ? 'sel-like' : 'sel-dislike');
+  }
+
+  async function sendFeedback(id) {
+    const voto = votes[id];
+    if (!voto) { alert('SELECT 👍 OR 👎 FIRST'); return; }
+    const comentario = document.getElementById('fc-' + id).value.trim();
+    try {
+      await fetch('/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pregunta: lastQuestion, respuesta: lastAnswer, voto, comentario })
+      });
+      document.getElementById('fb-' + id).innerHTML = '<span class="fb-sent">// FEEDBACK_SAVED ✓</span>';
+    } catch {
+      document.getElementById('fb-' + id).innerHTML = '<span style="color:var(--magenta);font-size:.7rem">// ERROR SAVING FEEDBACK</span>';
+    }
+  }
+
+  // ── VECTOR SEARCH ──
+  async function buscar() {
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) return;
+    document.getElementById('searchLoading').style.display = 'block';
+    document.getElementById('resultados').innerHTML = '';
+
+    try {
+      const res = await fetch('/buscar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      });
+      const data = await res.json();
+      document.getElementById('searchLoading').style.display = 'none';
+
+      if (!data.length) {
+        document.getElementById('resultados').innerHTML = '<div class="empty-state">// NO RESULTS FOUND</div>';
+        return;
+      }
+
+      document.getElementById('resultados').innerHTML = data.map((r, i) => `
+        <div class="result-card">
+          <div class="result-header">
+            <span class="result-rank">MATCH_${String(i+1).padStart(2,'0')}</span>
+            <span class="result-score">DIST: ${r.distancia}</span>
+          </div>
+          <div class="result-text">${esc(r.texto)}</div>
+        </div>
+      `).join('');
+    } catch (err) {
+      document.getElementById('searchLoading').style.display = 'none';
+      document.getElementById('resultados').innerHTML = `<div class="empty-state">// ERROR: ${err.message}</div>`;
+    }
+  }
+
+  // ── UPLOAD ──
+  async function uploadFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const status = document.getElementById('uploadStatus');
+    status.style.color = 'rgba(0,245,255,0.5)';
+    status.textContent = '// PROCESSING: ' + file.name;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/upload', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.error) {
+        status.style.color = 'var(--magenta)';
+        status.textContent = '// ERROR: ' + data.error;
+      } else {
+        status.style.color = 'var(--green)';
+        status.textContent = `// SUCCESS: ${data.chunks_generados} CHUNKS INDEXED · TOTAL: ${data.total_en_indice}`;
+        loadDocs();
+      }
+    } catch {
+      status.style.color = 'var(--magenta)';
+      status.textContent = '// CONNECTION ERROR';
+    }
+    input.value = '';
+  }
+
+  async function loadDocs() {
+    try {
+      const res = await fetch('/documentos');
+      const data = await res.json();
+      const list = document.getElementById('docList');
+      if (!data.documentos.length) {
+        list.innerHTML = '<div class="empty-state" style="padding:16px">// NO DOCUMENTS LOADED</div>';
+        return;
+      }
+      list.innerHTML = data.documentos.map(d => {
+        const name = d.includes('http') ? d.split('/').filter(Boolean).pop() || d : d;
+        return `<div class="doc-item" title="${d}">${name}</div>`;
+      }).join('');
+      document.getElementById('chunkCount').textContent = `VECTORS: ${data.total_chunks}`;
+    } catch {}
+  }
+
+  // ── STATS ──
+  async function loadStats() {
+    try {
+      const res = await fetch('/feedback');
+      const data = await res.json();
+      document.getElementById('statTotal').textContent = data.total;
+      document.getElementById('statLikes').textContent = data.likes;
+      document.getElementById('statDislikes').textContent = data.dislikes;
+      document.getElementById('statRate').textContent = data.tasa_likes + '%';
+
+      const log = document.getElementById('feedbackLog');
+      log.innerHTML = [...data.registros].reverse().map(f => `
+        <div class="fb-log-item ${f.voto}">
+          <div class="fb-log-q">&gt; ${esc(f.pregunta)}</div>
+          ${f.comentario ? `<div class="fb-log-c">"${esc(f.comentario)}"</div>` : ''}
+        </div>
+      `).join('') || '<div class="empty-state" style="padding:16px">// NO FEEDBACK YET</div>';
+    } catch {}
+  }
+
+  function removeEl(id) { const el = document.getElementById(id); if (el) el.remove(); }
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>'); }
+
+  loadDocs();
+</script>
+</body>
+</html>
